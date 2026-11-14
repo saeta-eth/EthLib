@@ -65,23 +65,34 @@ def Fin.powBits {m : Nat} [NeZero m] : Nat → Fin m → Nat → Fin m
 
 namespace Fp
 
+/-- The base modulus of SEC 2 v2 §2.4.1 as eight limbs of 32 bits, the lowest first. -/
+@[inline] def pLimbs : Montgomery.Limbs8 :=
+  ⟨0xfffffc2f, 0xfffffffe, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff⟩
+
+/-- `-p^(-1) mod 2^32`, the word constant for Montgomery reduction. -/
+@[inline] def pinv : UInt64 := 0xd2253531
+
 /-- The Montgomery constants of `p`, with radix `R = 2^256`.
 
 Each one derives from `p` and `R`, and is checked against its defining equation. -/
 @[inline] def params : Montgomery.Modulus 8 where
   p := modulus
-  pLimbs := ⟨0xfffffc2f, 0xfffffffe, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff⟩
+  pLimbs := pLimbs
   r1 := ⟨0x3d1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0⟩
   r2 := ⟨0xe90a1, 0x7a2, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0⟩
   pm2 := ⟨0xfffffc2d, 0xfffffffe, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
     0xffffffff, 0xffffffff⟩
-  pinv := 0xd2253531
+  pinv := pinv
   pLimbs_spec := by decide
   pinv_spec := by decide
   r1_spec := by decide
   r2_spec := by decide
   pm2_spec := by decide
+  mul a b := Montgomery.mulCoreWithConstants (n := 8) a b pLimbs pinv
+  mul_spec a b _ :=
+    (inline.eq_1 (Montgomery.mulCore (n := 8) a b pLimbs pinv)).trans
+      (Montgomery.mulCore_eq (n := 8) a b pLimbs pinv)
 
 /-- A base-field element held in eight Montgomery limbs. -/
 abbrev Montgomery := EthLib.Cryptography.Montgomery params

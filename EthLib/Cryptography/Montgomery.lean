@@ -1086,6 +1086,15 @@ The compiler makes one copy for each limb count, with the code unrolled. -/
 theorem mulCore_eq (a b : Limbs.T n) (p : Limbs.T n) (pinv : UInt64) :
     mulCore a b p pinv = mulWords (Limbs.get p) pinv (Limbs.get a) (Limbs.get b) Limbs.pack := rfl
 
+/-- The shared product with specialization for known modulus limbs and reduction constants.
+
+The call to `mulCore` is inlined here so those constants reach its word operations.
+
+This boundary stays out of callers to keep the unrolled product out of point formulas. -/
+@[noinline, specialize p pinv] def mulCoreWithConstants (a b : Limbs.T n)
+    (p : @& Limbs.T n) (pinv : UInt64) : Limbs.T n :=
+  inline (mulCore a b p pinv)
+
 end Core
 
 /-- An odd modulus `p` below `R = 2 ^ (32 n)`, with the constants of its Montgomery arithmetic.
