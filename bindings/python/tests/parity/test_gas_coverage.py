@@ -663,7 +663,7 @@ def test_pinned_request_contract_calls(archive, observer, kind) -> None:
         f"[fork_Amsterdam-request_class_{kind}-blockchain_test]",
         REQUEST_SUBMISSIONS,
     )
-    # Both blocks commit request data of the given type.
+    # Replay checks the observed state root and requests hash against each block's header.
     # The first block has no transactions and produces its request data through a system call.
     counts = gas_coverage.replay_blockchain(archive, implicit, observer)["glamsterdam"]
     assert counts.blocks == 1

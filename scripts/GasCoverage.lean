@@ -165,7 +165,7 @@ def blockRequest (request : Json) (forkName : String) : Result Json := do
   let ⟨fork, block⟩ ← Blocks.Exports.blockOf config forkName (← fromHexField request "block")
   let checkSeal : Bool ← field request "checkSeal"
   -- The state transition checks the active fork and the roots before the observed run.
-  let post ← toResult none (stateTransition chain block checkSeal)
+  let _ ← toResult none (stateTransition chain block checkSeal)
   let hashes ← toResult none (recentHashes chain.recent)
   let env := blockEnvironment chain.config hashes block.header
   let observer : BodyObserver (StateT Counts (Except EvmError))
@@ -179,6 +179,10 @@ def blockRequest (request : Json) (forkName : String) : Result Json := do
         liftExcept (Blocks.systemCall env block target data) }
   let (output, counts) ← toResult "observed block"
     ((applyBodyWith observer chain.config env block ⟨chain.state, ∅, ∅, ∅, ∅⟩).run {})
+  let post := output.block.applyChanges
+  toResult "observed block" do
+    let roots ← outputRoots block.transactions block.withdrawals output post
+    firstFailure (outputChecks block.header output roots)
   let receipts ← toResult "receipts" (output.receipts.mapM fun (type, receipt) =>
     encodeReceipt type receipt)
   let accounts ← toResult none (Blocks.Exports.accountsItem post)

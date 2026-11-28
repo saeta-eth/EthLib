@@ -743,8 +743,9 @@ ETHLIB_ARCHIVES=~/.cache/ethlib/archives PYTHONPATH=bindings/python/tests \
 ```
 
 The report reads the pinned execution release and selected legacy and devnet block fixtures.
-It counts a block at its active fork after checking its state and receipt roots.
+It checks the observed block's state and receipt roots and, from Pectra, its requests hash.
 It also checks the encoded block receipts when the fixture supplies them.
+It counts a block at its active fork after these checks pass.
 
 Block events come only from included transactions, including their calls to system contracts.
 Replay executes the implicit beacon-root and parent-hash calls without counting their steps.
