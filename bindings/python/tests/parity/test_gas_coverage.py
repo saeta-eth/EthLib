@@ -603,8 +603,7 @@ def test_pinned_sstore_transition(archive, observer) -> None:
     counts = gas_coverage.replay_blockchain(archive, transition_case(archive), observer)
     assert {fork: result.blocks for fork, result in counts.items()} == {"bpo2": 1, "glamsterdam": 1}
     # The transaction in each block writes 1 to an empty slot with 0x6001600055.
-    # The implicit calls fill empty slots with the beacon timestamp and parent hash.
-    # The beacon roots call also writes a zero root to an empty slot.
+    # The system calls of the block also write slots, but replay does not count their steps.
     common = {"opcode.sstore.cold": 1, "opcode.sstore.sentry-passed": 1}
     assert {
         fork: {rule: n for rule, n in result.gas_rules.items() if rule.startswith("opcode.sstore.")}
@@ -628,7 +627,8 @@ def test_pinned_transaction_reads_beacon_root(archive, observer) -> None:
         "blockchain_test",
         "tests/cancun/eip4788_beacon_root/test_beacon_root_contract.py"
         "::test_tx_to_beacon_root_contract"
-        "[fork_Cancun-tx_type_0-blockchain_test-call_beacon_root_contract_True-auto_access_list_False]",
+        "[fork_Cancun-tx_type_0-blockchain_test-call_beacon_root_contract_True-"
+        "auto_access_list_False]",
         BEACON_ROOT_CALL,
     )
     counts = gas_coverage.replay_blockchain(archive, case, observer)["dencun"]
@@ -663,13 +663,12 @@ def test_pinned_request_contract_calls(archive, observer, kind) -> None:
         f"[fork_Amsterdam-request_class_{kind}-blockchain_test]",
         REQUEST_SUBMISSIONS,
     )
-    # Replay checks the observed state root and requests hash against each block's header.
-    # The first block has no transactions and produces its request data through a system call.
+    # The block of the first fixture has no transaction, so its requests come from a system call.
     counts = gas_coverage.replay_blockchain(archive, implicit, observer)["glamsterdam"]
     assert counts.blocks == 1
     assert not counts.gas_rules
 
-    # The second block's transaction calls the request contract and emits one log with data.
+    # In the second fixture, the transaction calls the request contract, which runs one LOG.
     counts = gas_coverage.replay_blockchain(archive, submission, observer)["glamsterdam"]
     assert counts.blocks == 1
     assert counts.gas_rules["opcode.log.per-data-byte"] == 1
