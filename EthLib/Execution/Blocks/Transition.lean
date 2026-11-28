@@ -496,7 +496,7 @@ structure BodyResult (fork : Fork) where
 def BodyResult.post {fork : Fork} (result : BodyResult fork) : State :=
   result.output.block.applyChanges
 
-/-- Run the body of `block` with an observer on the chain `chain`, and compute the roots it gives.
+/-- Run the body of `block` on the chain `chain` with the observer `obs`, and compute its roots.
 
 The body reads none of the header fields that it gives: the roots, the gas counts, the logs Bloom.
 
@@ -521,8 +521,11 @@ def runBodyWith {fork : Fork} {M N : Type → Type} [Monad M] [MonadExceptOf Evm
 
 It is the run with no observer, in the monad of errors.
 
-The body reads none of the header fields that it gives, so a builder can run it before it fills
-them. -/
+The body reads none of the header fields that it gives: the roots, the gas counts, the logs Bloom.
+
+Nor does it read the requests hash and the block access list hash.
+
+So a builder can run it before it fills those fields. -/
 def runBody (chain : BlockChain) {fork : Fork} (block : Block fork Transaction)
     (overrides : BodyOverrides := {}) (blobGasPrice : Option Nat := none) :
     Except BlockError (BodyResult fork) :=
