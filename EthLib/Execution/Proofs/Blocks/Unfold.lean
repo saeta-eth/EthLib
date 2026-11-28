@@ -6,7 +6,7 @@ public import EthLib.Execution.Proofs.Transactions.Unfold
 /-!
 # Proofs: the steps of a block body with no observer
 
-The system calls, the transactions, the requests and the body of a block take an observer.
+The state transition and the steps of its body take an observer.
 
 With no observer, in the monad of errors, each one unfolds to a body with no lifts.
 
@@ -19,7 +19,7 @@ namespace EthLib.Execution.Blocks
 
 open EthLib.Base
 open EthLib.Execution.Evm
-open EthLib.Execution.State (BlockState TransactionState stateRoot)
+open EthLib.Execution.State (BlockState State TransactionState stateRoot)
 open EthLib.Execution.Transactions
 open EthLib.Cryptography.Hash.Keccak (keccak256)
 
@@ -157,6 +157,30 @@ theorem applyBody_unfold {fork : Fork} (config : ChainConfig) (env : BlockEnviro
       return { output with body := { body with block := state }, requests, accessListHash }) := by
   rw [applyBody, applyBodyWith]
   simp only [liftExcept_except]
+  rfl
+
+/-- Running the body on its chain with no observer gives the output and its roots. -/
+theorem runBody_unfold {fork : Fork} (chain : BlockChain) (block : Block fork Transaction)
+    (overrides : BodyOverrides) (blobGasPrice : Option Nat) :
+    runBody chain block overrides blobGasPrice = (do
+      let hashes ← recentHashes chain.recent
+      let env := blockEnvironment chain.config hashes block.header blobGasPrice
+      let output ← applyBody chain.config env block ⟨chain.state, ∅, ∅, ∅, ∅⟩ overrides
+      let roots ← outputRoots block.transactions block.withdrawals output output.block.applyChanges
+      return ⟨output, roots⟩) :=
+  rfl
+
+/-- The transition with no observer gives the post-state after the checks in order. -/
+theorem stateTransition_unfold {fork : Fork} (chain : BlockChain)
+    (block : Block fork Transaction) (checkSeal : Bool) :
+    stateTransition chain block checkSeal = (do
+      if .hegota ≤ fork then throw (.aborted (.forkNotYetSpecified fork))
+      let active := chain.config.activeFork block.header.number block.header.timestamp.toNat
+      unless active = some fork do throw (.wrongFork active fork)
+      checkBlock chain.config checkSeal chain.recent block
+      let result ← runBody chain block
+      firstFailure (outputChecks block.header result.output result.roots)
+      return result.post : Except BlockError State) :=
   rfl
 
 end EthLib.Execution.Blocks
