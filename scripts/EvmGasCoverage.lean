@@ -124,16 +124,18 @@ private def usesMemory : Op → Bool
   | _ => false
 
 private inductive FixedCharge where
+  /-- The whole charge of the step, as measured. -/
   | whole
+  /-- The base charge from the table, since the step also pays for memory. -/
   | base
 
 /-- The charge that the report counts as a fixed price for an active opcode. -/
 private def fixedCharge (fork : Fork) (op : Op) : Option FixedCharge :=
   match op with
-  -- EIP-150 specifies a base charge for EXTCODECOPY, and EIP-2929 makes it depend on access.
+  -- Before Berlin, the base charge of EXTCODECOPY does not depend on access, by EIP-2929.
   | .extcodecopy => if fork < .berlin then some .base else none
   | .balance | .extcodehash | .extcodesize => if fork < .berlin then some .whole else none
-  -- SLOAD has its own rule even before Berlin.
+  -- These charges have their own rules; that of SLOAD applies even before Berlin.
   | .exp | .sload | .sstore | .selfdestruct => none
   | _ => if usesMemory op then none else some .whole
 
