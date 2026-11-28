@@ -166,10 +166,13 @@ def blockRequest (request : Json) (forkName : String) : Result Json := do
   let checkSeal : Bool ← field request "checkSeal"
   let observer : BodyObserver (StateT Counts (Except EvmError))
       (StateT Counts (Except BlockError)) fork :=
-    BodyObserver.ofSteps observeStep
-      (fun run counts => (run.run counts).mapError .aborted)
-      (fun _ included tx output =>
-        modify (addRules · (transactionGasRules fork included tx output)))
+    { BodyObserver.ofSteps observeStep
+        (fun run counts => (run.run counts).mapError .aborted)
+        (fun _ included tx output =>
+          modify (addRules · (transactionGasRules fork included tx output))) with
+      -- Run implicit system calls without a step observer.
+      systemCall := fun env block target data =>
+        liftExcept (Blocks.systemCall env block target data) }
   -- A failed transition discards the counts in the state of the observer.
   let (result, counts) ← toResult none ((stateTransitionWith observer chain block checkSeal).run {})
   let receipts ← toResult "receipts" (result.output.receipts.mapM fun (type, receipt) =>
