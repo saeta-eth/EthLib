@@ -6,8 +6,7 @@ public import EthLib.Execution.Proofs.Transactions.Unfold
 /-!
 # Proofs: the steps of a block body with no observer
 
-The system calls, the transactions, the requests, the body and the transition of a block take an
-observer.
+The system calls, the transactions, the requests, the body and the transition take an observer.
 
 With no observer, in the monad of errors, each one unfolds to a body with no lifts.
 
