@@ -6,7 +6,8 @@ public import EthLib.Execution.Proofs.Transactions.Unfold
 /-!
 # Proofs: the steps of a block body with no observer
 
-The state transition and the steps of its body take an observer.
+The system calls, the transactions, the requests, the body and the transition of a block take an
+observer.
 
 With no observer, in the monad of errors, each one unfolds to a body with no lifts.
 
@@ -167,7 +168,9 @@ theorem runBody_unfold {fork : Fork} (chain : BlockChain) (block : Block fork Tr
       let env := blockEnvironment chain.config hashes block.header blobGasPrice
       let output ← applyBody chain.config env block ⟨chain.state, ∅, ∅, ∅, ∅⟩ overrides
       let roots ← outputRoots block.transactions block.withdrawals output output.block.applyChanges
-      return ⟨output, roots⟩) :=
+      return ⟨output, roots⟩) := by
+  rw [runBody, runBodyWith]
+  simp only [liftExcept_except]
   rfl
 
 /-- The transition with no observer gives the post-state after the checks in order. -/
@@ -180,7 +183,16 @@ theorem stateTransition_unfold {fork : Fork} (chain : BlockChain)
       checkBlock chain.config checkSeal chain.recent block
       let result ← runBody chain block
       firstFailure (outputChecks block.header result.output result.roots)
-      return result.post : Except BlockError State) :=
-  rfl
+      return result.post : Except BlockError State) := by
+  rw [stateTransition, stateTransitionWith]
+  simp only [liftExcept_except]
+  -- Each branch maps the result of the body to the state after it.
+  by_cases hfork : .hegota ≤ fork
+  · simp only [hfork, ↓reduceIte, map_bind]
+    rfl
+  by_cases hactive :
+      chain.config.activeFork block.header.number block.header.timestamp.toNat = some fork
+  all_goals simp only [hfork, hactive, ↓reduceIte, map_bind, map_pure]
+  all_goals rfl
 
 end EthLib.Execution.Blocks
